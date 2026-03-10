@@ -682,14 +682,29 @@ require("lazy").setup({
 			})
 		end,
 	},
+
 	{
-		"AlexvZyl/nordic.nvim",
-		lazy = false,
+		"catppuccin/nvim",
+		name = "catppuccin",
 		priority = 1000,
 		config = function()
-			require("nordic").load()
+			require("catppuccin").setup({
+				styles = {
+					variables = { "italic" },
+				},
+			})
+			require("catppuccin").load()
 		end,
 	},
+
+	-- {
+	-- 	"AlexvZyl/nordic.nvim",
+	-- 	lazy = false,
+	-- 	priority = 1000,
+	-- 	config = function()
+	-- 		require("nordic").load()
+	-- 	end,
+	-- },
 
 	-- Highlight todo, notes, etc in comments
 	{
