@@ -94,6 +94,9 @@ vim.filetype.add({
 	pattern = {
 		[".*/waybar/config"] = "jsonc",
 	},
+	extension = {
+		inc = "cpp",
+	}
 })
 
 -- TIP: Disable arrow keys in normal mode
@@ -157,9 +160,6 @@ require("lazy").setup({
 	--
 	--  This is equivalent to:
 	--    require('Comment').setup({})
-
-	-- "gc" to comment visual regions/lines
-	{ "numToStr/Comment.nvim", opts = {} },
 
 	{
 		"nvim-java/nvim-java",
@@ -228,7 +228,6 @@ require("lazy").setup({
 	{ -- Fuzzy Finder (files, lsp, etc)
 		"nvim-telescope/telescope.nvim",
 		event = "VimEnter",
-		branch = "0.1.x",
 		dependencies = {
 			"nvim-lua/plenary.nvim",
 			{ -- If encountering errors, see telescope-fzf-native README for installation instructions
@@ -776,39 +775,36 @@ require("lazy").setup({
 		config = function()
 			require("nvim-treesitter").setup({
 				ensure_installed = {
-					"javascript", "typescript", "jsdoc", "bash", "c",
+					"cpp", "javascript", "typescript", "jsdoc", "bash", "c",
 					"html", "lua", "luadoc", "markdown", "python",
 					"vim", "vimdoc", "go", "gomod", "gowork", "gosum",
 				},
 				auto_install = true,
 			})
 
-			vim.api.nvim_create_autocmd("FileType", {
-				callback = function()
-					pcall(vim.treesitter.start)
-				end,
-			})
+
+			-- vim.api.nvim_create_autocmd("FileType", {
+			-- 	callback = function()
+			-- 		pcall(vim.treesitter.start)
+			-- 	end,
+			-- })
 		end,
+		build = function()
+			-- patch the nil parent bug
+			local path = vim.fn.stdpath("data") .. "/lazy/nvim-treesitter/lua/nvim-treesitter/query_predicates.lua"
+			local content = io.open(path, "r"):read("*a")
+			-- only patch if not already patched
+			if not content:find("if not parent then") then
+				content = content:gsub(
+					"local parent = node:parent()",
+					"local parent = node:parent()\n\t\tif not parent then return false end"
+				)
+				io.open(path, "w"):write(content)
+			end
+			vim.cmd("TSUpdate")
+		end,
+
 	},
-	-- The following two comments only work if you have downloaded the kickstart repo, not just copy pasted the
-	-- init.lua. If you want these files, they are in the repository, so you can just download them and
-	-- place them in the correct locations.
-
-	-- NOTE: Next step on your Neovim journey: Add/Configure additional plugins for Kickstart
-	--
-	--  Here are some example plugins that I've included in the Kickstart repository.
-	--  Uncomment any of the lines below to enable them (you will need to restart nvim).
-	--
-	-- require 'kickstart.plugins.debug',
-	-- require 'kickstart.plugins.indent_line',
-	-- require 'kickstart.plugins.lint',
-
-	-- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
-	--    This is the easiest way to modularize your config.
-	--
-	--  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-	--    For additional information, see `:help lazy.nvim-lazy.nvim-structuring-your-plugins`
-	-- { import = 'custom.plugins' },
 }, {
 	ui = {
 		-- If you are using a Nerd Font: set icons to an empty table which will use the
@@ -832,3 +828,13 @@ require("lazy").setup({
 })
 
 -- The line beneath this is called `modeline`. See `:help modeline`
+--
+-- suppress treesitter decorator errors
+vim.notify = (function(orig)
+    return function(msg, level, opts)
+        if type(msg) == "string" and msg:find("query_predicates") then
+            return
+        end
+        return orig(msg, level, opts)
+    end
+end)(vim.notify)
